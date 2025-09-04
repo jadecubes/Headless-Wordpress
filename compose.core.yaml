@@ -36,6 +36,7 @@ services:
       - ./logs/wp-debug.log:/var/www/html/wp-content/debug.log
       - ./logs/apache:/var/log/apache2
       - ./backend/wp-config-extra.php:/var/www/html/wp-config-extra.php:ro
+      - ./backend/.htaccess:/var/www/html/.htaccess:ro
     ports: ["8080:80"]
     healthcheck:
       test: ["CMD-SHELL", "php -r 'exit((int)!@fsockopen(\"127.0.0.1\",80));'"]
