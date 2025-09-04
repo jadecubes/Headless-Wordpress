@@ -69,10 +69,12 @@ make dev-up
 make dev-down
 ```
 You can get the portal in ```https://admin.mycompany.local:8443``` after you launch the website.
+
 <img width="1721" height="999" alt="image" src="https://github.com/user-attachments/assets/b73b31f6-9b19-4037-8844-3768bb542f88" />
 
 ## Notes
 - Certificate and key in the repository are self-signed.
+- It's the development environment included in the repository.
 
 
 
