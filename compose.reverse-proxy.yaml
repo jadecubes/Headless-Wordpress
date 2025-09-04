@@ -1,0 +1,20 @@
+services:
+  reverse-proxy:
+    build: ./reverse-proxy
+    depends_on:
+      - wordpress
+    ports:
+      - "8081:80"
+      - "8443:443"
+    environment:
+      ADMIN_HOST: ${ADMIN_HOST}
+      API_HOST: ${API_HOST}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      UPSTREAM_HOST: ${UPSTREAM_HOST:-wordpress}
+      UPSTREAM_PORT: ${UPSTREAM_PORT:-80}
+      SSL_CERT_PATH: ${SSL_CERT_PATH:-/etc/ssl/certs/api.crt}
+      SSL_KEY_PATH:  ${SSL_KEY_PATH:-/etc/ssl/private/api.key}
+    volumes:
+      # certs (dev self-signed or prod real certs)
+      - ./reverse-proxy/certs:/etc/ssl:ro
