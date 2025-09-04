@@ -21,20 +21,21 @@ services:
     image: wordpress:6-php8.2-apache
     depends_on: { db: { condition: service_healthy } }
     environment:
+      # DB envs
       WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: ${DB_USER:-wp}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wp}
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      # Admin host envs
+      ADMIN_HOST: ${ADMIN_HOST:-admin.mycompany.local}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN}
       WORDPRESS_CONFIG_EXTRA: |
-        define('WP_ENVIRONMENT_TYPE', 'development');
-        define('WP_DEBUG', true);
-        define('WP_DEBUG_LOG', true);
-        define('JWT_AUTH_SECRET_KEY', getenv('JWT_SECRET_KEY') ?: 'change-this-secret');
-        define('JWT_AUTH_CORS_ENABLE', true);
+        require_once __DIR__ . '/wp-config-extra.php';
     volumes:
       - ./backend/wp-content:/var/www/html/wp-content
       - ./logs/wp-debug.log:/var/www/html/wp-content/debug.log
       - ./logs/apache:/var/log/apache2
+      - ./backend/wp-config-extra.php:/var/www/html/wp-config-extra.php:ro
     ports: ["8080:80"]
     healthcheck:
       test: ["CMD-SHELL", "php -r 'exit((int)!@fsockopen(\"127.0.0.1\",80));'"]
@@ -78,7 +79,7 @@ services:
         set -e
         until curl -fsS http://wordpress/wp-login.php >/dev/null; do echo "Waiting for WP..."; sleep 2; done;
         wp core is-installed || wp core install
-          --url="http://localhost:8080"
+          --url="${ADMIN_ORIGIN}" \
           --title="Headless WP"
           --admin_user="$WP_ADMIN_USER"
           --admin_password="$WP_ADMIN_PASS"
@@ -93,7 +94,7 @@ services:
   adminer:
     image: adminer
     restart: unless-stopped
-    ports: ["9090:8080"]
+    ports: ["9091:8080"]
 
 volumes:
   db_data:
