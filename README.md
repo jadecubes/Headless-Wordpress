@@ -56,3 +56,17 @@ flowchart LR
   class FE frontend;
 
 ```
+
+## How to Run Headless Wordpress?
+In the environment where Docker Desktop is installed, execute commands below to launch. Commands work correctly on Mac Silicon.
+
+```
+# Commands to launch
+make dev-build
+make dev-up
+
+# Commands to terminate
+make dev-down
+```
+
+
