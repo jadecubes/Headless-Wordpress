@@ -9,24 +9,27 @@ server {
   http2 on;
   server_name ${ADMIN_HOST};
 
-  # OK to include here (server scope):
   include /etc/nginx/conf.d/servers/ssl.conf;
   include /etc/nginx/conf.d/servers/cors-admin.conf;
 
-  # Optional: access controls...
-  # allow 203.0.113.0/24; deny all;
-  # auth_basic "Restricted"; auth_basic_user_file /etc/nginx/.htpasswd;
-
-  # Lightweight handling for preflight requests at server scope (allowed):
+  # Preflight
   if ($request_method = OPTIONS) { return 204; }
+
+  # Make the root of the admin host go to the login form
+  location = / { return 302 /wp-login.php; }
 
   location / {
     proxy_pass         http://backend;
-    proxy_set_header   Host $host;
-    proxy_set_header   X-Forwarded-Host   $host:$server_port;
-    proxy_set_header   X-Forwarded-Port   $server_port;
-    proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+
+    # preserve exact host:port the user requested
+    proxy_set_header   Host               $http_host;
+    proxy_set_header   X-Forwarded-Host   $http_host;
+
+    # tell WP we're https on the public dev port
     proxy_set_header   X-Forwarded-Proto  https;
+    proxy_set_header   X-Forwarded-Port   ${PUBLIC_TLS_PORT};
+
+    proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
     proxy_redirect     off;
   }
 }

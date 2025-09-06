@@ -1,4 +1,3 @@
-# Public API: allow only your frontend SPA’s origin.
 add_header Access-Control-Allow-Origin "${FRONTEND_ORIGIN}" always;
 add_header Access-Control-Allow-Credentials "true" always;
 add_header Access-Control-Allow-Headers "Authorization,Content-Type" always;

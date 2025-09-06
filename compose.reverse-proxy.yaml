@@ -15,6 +15,7 @@ services:
       UPSTREAM_PORT: ${UPSTREAM_PORT:-80}
       SSL_CERT_PATH: ${SSL_CERT_PATH:-/etc/ssl/certs/api.crt}
       SSL_KEY_PATH:  ${SSL_KEY_PATH:-/etc/ssl/private/api.key}
+      PUBLIC_TLS_PORT: ${PUBLIC_TLS_PORT:-8443}
     volumes:
       # certs (dev self-signed or prod real certs)
       - ./reverse-proxy/certs:/etc/ssl:ro

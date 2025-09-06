@@ -12,17 +12,21 @@ server {
   include /etc/nginx/conf.d/servers/ssl.conf;
   include /etc/nginx/conf.d/servers/cors-api.conf;
 
-  if ($request_method = OPTIONS) { return 204; }
+  location = /wp-json { return 301 /wp-json/; }
 
   location ^~ /wp-json/ {
     proxy_pass         http://backend;
-    proxy_set_header   Host $host;
-    proxy_set_header   X-Forwarded-Host   $host:$server_port;
-    proxy_set_header   X-Forwarded-Port   $server_port;
-    proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+
+    proxy_set_header   Host               $http_host;
+    proxy_set_header   X-Forwarded-Host   $http_host;
     proxy_set_header   X-Forwarded-Proto  https;
+    proxy_set_header   X-Forwarded-Port   ${PUBLIC_TLS_PORT};
+
+    proxy_set_header   Authorization      $http_authorization;
+    proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
     proxy_redirect     off;
   }
 
+  # Block everything else (including ?rest_route=)
   location / { return 403; }
 }

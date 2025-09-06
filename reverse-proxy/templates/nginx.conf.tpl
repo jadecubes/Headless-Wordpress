@@ -1,4 +1,3 @@
-# /templates/nginx.conf.tpl  (TOP-LEVEL)
 worker_processes auto;
 
 events { worker_connections 1024; }
@@ -26,8 +25,8 @@ http {
 
   gzip on;
   absolute_redirect off;
+  port_in_redirect off;
 
-  # Only these includes at http-level:
   include /etc/nginx/conf.d/servers/upstream.conf;
   include /etc/nginx/conf.d/servers/site-admin.conf;
   include /etc/nginx/conf.d/servers/site-api.conf;

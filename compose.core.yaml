@@ -32,6 +32,7 @@ services:
       WORDPRESS_CONFIG_EXTRA: |
         require_once __DIR__ . '/wp-config-extra.php';
     volumes:
+      - wp_data:/var/www/html
       - ./backend/wp-content:/var/www/html/wp-content
       - ./logs/wp-debug.log:/var/www/html/wp-content/debug.log
       - ./logs/apache:/var/log/apache2
@@ -55,6 +56,7 @@ services:
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wp}
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
     volumes:
+      - wp_data:/var/www/html 
       - ./backend/wp-content:/var/www/html/wp-content
       - ./logs/wp-debug.log:/var/www/html/wp-content/debug.log
       - ./logs/apache:/var/log/apache2
@@ -68,28 +70,19 @@ services:
       WORDPRESS_DB_USER: ${DB_USER:-wp}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wp}
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN}
       WP_ADMIN_USER: ${WP_ADMIN_USER:-admin}
       WP_ADMIN_PASS: ${WP_ADMIN_PASS:-admin}
       WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@example.com}
     volumes:
+      # IMPORTANT: same site volume as the wordpress service
+      - wp_data:/var/www/html
+      # Your content + config (RO where appropriate)
       - ./backend/wp-content:/var/www/html/wp-content
-      - ./logs/wp-debug.log:/var/www/html/wp-content/debug.log
-      - ./logs/apache:/var/log/apache2
-    command: >
-      bash -lc '
-        set -e
-        until curl -fsS http://wordpress/wp-login.php >/dev/null; do echo "Waiting for WP..."; sleep 2; done;
-        wp core is-installed || wp core install
-          --url="${ADMIN_ORIGIN}" \
-          --title="Headless WP"
-          --admin_user="$WP_ADMIN_USER"
-          --admin_password="$WP_ADMIN_PASS"
-          --admin_email="$WP_ADMIN_EMAIL";
-        wp rewrite structure "/%postname%/" --hard;
-        wp option update permalink_structure "/%postname%/";
-        wp plugin install jwt-authentication-for-wp-rest-api --activate;
-        echo "Setup complete."
-      '
+      - ./backend/wp-config-extra.php:/var/www/html/wp-config-extra.php:ro
+      # Bootstrap script
+      - ./backend/wp-bootstrap.sh:/bootstrap/wp-bootstrap.sh:ro
+    command: [ "bash", "-lc", "/bootstrap/wp-bootstrap.sh" ]
     restart: "no"
 
   adminer:
@@ -99,3 +92,4 @@ services:
 
 volumes:
   db_data:
+  wp_data:

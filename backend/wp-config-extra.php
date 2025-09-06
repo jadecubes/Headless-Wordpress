@@ -19,9 +19,6 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
 if (!empty($_SERVER['HTTP_X_FORWARDED_PORT'])) {
   $_SERVER['SERVER_PORT'] = $_SERVER['HTTP_X_FORWARDED_PORT'];
 }
-if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-  $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
-}
 
 // Canonical admin origin (dev may include :8443)
 $admin_origin = getenv('ADMIN_ORIGIN') ?: ('https://' . getenv('ADMIN_HOST'));
