@@ -72,6 +72,12 @@ You can get the portal in ```https://admin.mycompany.local:8443``` after you lau
 
 <img width="1721" height="999" alt="image" src="https://github.com/user-attachments/assets/b73b31f6-9b19-4037-8844-3768bb542f88" />
 
+## Who is Which
+- https://admin.mycompany.local:8443 → always show the WP login/admin (no public site)
+- https://api.mycompany.local:8443 → WP REST API only
+- https://mycompany.local:8443 → React front-end (proxied to localhost:3000 in dev)
+
+
 ## Notes
 - Certificate and key in the repository are self-signed.
 - It's the development environment included in the repository.
