@@ -12,6 +12,34 @@ jobs:
     name: Run API Tests
     runs-on: ubuntu-latest
 
+    env:
+      # Docker Compose file configuration
+      COMPOSE_FILE: compose.core.yaml:compose.monitoring.yaml:compose.reverse-proxy.yaml
+
+      # Database configuration
+      DB_NAME: wordpress
+      DB_USER: wp
+      DB_PASSWORD: wp
+      DB_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+
+      # Nginx/WordPress configuration
+      ADMIN_HOST: admin.mycompany.local
+      API_HOST: api.mycompany.local
+      ADMIN_ORIGIN: https://admin.mycompany.local:8443
+      FRONTEND_ORIGIN: https://localhost:3000
+      UPSTREAM_HOST: wordpress
+      UPSTREAM_PORT: 80
+      PUBLIC_TLS_PORT: 8443
+
+      # WordPress admin credentials
+      WP_ADMIN_USER: admin
+      WP_ADMIN_PASS: admin
+      WP_ADMIN_EMAIL: admin@example.com
+
+      # JWT Secret (test environment only)
+      JWT_SECRET_KEY: 36LCDH/JkFRUOl3OtQk3fSTxsIxR4Y3c9t6VRF/VyHjTtCYh3rqiOrNRbVB1rhZq
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,7 +66,26 @@ jobs:
           DOCKER_BUILDKIT: 1
 
       - name: Start Docker services
-        run: make dev-up
+        run: |
+          # Ensure we're starting fresh
+          make dev-down || true
+          make dev-up
+
+      - name: Wait for setup container to complete
+        run: |
+          echo "Waiting for setup container to complete..."
+          timeout 120 bash -c 'while docker compose ps setup 2>/dev/null | grep -q "running\|Up"; do sleep 2; echo "Setup still running..."; done' || true
+          echo "Checking setup container exit code..."
+          docker compose ps setup
+
+          # If setup failed, restart it to pick up any script changes
+          if docker compose ps setup | grep -q "Exited"; then
+            echo "Setup container exited with error, restarting..."
+            docker compose up setup --force-recreate
+          fi
+
+          echo "Setup container logs:"
+          docker compose logs setup
 
       - name: Wait for WordPress to be ready
         run: |
@@ -51,6 +98,15 @@ jobs:
           echo "Checking WordPress API health..."
           curl -k -f -s https://api.mycompany.local:8443/wp-json/ | jq .
           echo "WordPress health check passed!"
+
+          echo "Checking JWT Auth endpoint..."
+          curl -k -s https://api.mycompany.local:8443/wp-json/jwt-auth/v1 | jq .
+
+          echo "Checking setup container logs..."
+          docker compose logs setup
+
+          echo "Checking active plugins..."
+          docker compose run --rm wpcli wp plugin list --allow-root
 
       - name: Install test dependencies
         working-directory: tests
@@ -87,11 +143,11 @@ jobs:
         if: failure()
         run: |
           echo "=== WordPress logs ==="
-          docker compose -f compose.core.yaml logs wordpress
+          docker compose logs wordpress
           echo "=== Database logs ==="
-          docker compose -f compose.core.yaml logs db
+          docker compose logs db
           echo "=== Reverse Proxy logs ==="
-          docker compose -f compose.reverse-proxy.yaml logs reverse-proxy
+          docker compose logs reverse-proxy
 
       - name: Cleanup Docker services
         if: always()

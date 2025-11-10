@@ -26,14 +26,15 @@ done
 echo "[bootstrap] WordPress is reachable."
 
 # --- First install (only if not installed) ---
-if ! wp core is-installed; then
+if ! wp core is-installed --allow-root; then
   echo "[bootstrap] Fresh install detected. Installing core..."
   wp core install \
     --url="${ADMIN_ORIGIN}" \
     --title="Headless WP" \
     --admin_user="${WP_ADMIN_USER}" \
     --admin_password="${WP_ADMIN_PASS}" \
-    --admin_email="${WP_ADMIN_EMAIL}"
+    --admin_email="${WP_ADMIN_EMAIL}" \
+    --allow-root
   echo "[bootstrap] Core install complete."
 else
   echo "[bootstrap] Core already installed."
@@ -43,17 +44,21 @@ fi
 echo "[bootstrap] Ensuring permalinks and JWT plugin..."
 
 # Pretty permalinks (required for /wp-json/ pretty REST routes)
-wp rewrite structure "/%postname%/" --hard
-wp rewrite flush --hard
+wp rewrite structure "/%postname%/" --hard --allow-root
+wp rewrite flush --hard --allow-root
+
+# Ensure upgrade directory exists with correct permissions
+mkdir -p /var/www/html/wp-content/upgrade
+chown www-data:www-data /var/www/html/wp-content/upgrade
 
 # JWT plugin (no-op if already installed; --force keeps it idempotent)
-wp plugin install jwt-authentication-for-wp-rest-api --activate --force
+wp plugin install jwt-authentication-for-wp-rest-api --activate --force --allow-root
 
 # Optional: diagnostics in logs
 echo "[bootstrap] JWT plugin status:"
-wp plugin status jwt-authentication-for-wp-rest-api || true
+wp plugin status jwt-authentication-for-wp-rest-api --allow-root || true
 
 echo "[bootstrap] Current permalink structure:"
-wp option get permalink_structure || true
+wp option get permalink_structure --allow-root || true
 
 echo "[bootstrap] Done."

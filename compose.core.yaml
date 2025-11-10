@@ -63,6 +63,7 @@ services:
 
   setup:
     image: wordpress:cli
+    user: root
     depends_on: { wordpress: { condition: service_healthy } }
     working_dir: /var/www/html
     environment:
