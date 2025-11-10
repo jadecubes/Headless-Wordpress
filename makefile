@@ -80,3 +80,36 @@ logs:
 build:
 	$(call do_compose,$(ENV_FILE),build)
 
+# ---- Testing targets ----
+test-install:
+	$(call banner,Installing test dependencies)
+	cd tests && npm install
+
+test:
+	$(call banner,Running API tests)
+	cd tests && npm test
+
+test-watch:
+	$(call banner,Running tests in watch mode)
+	cd tests && npm run test:watch
+
+test-coverage:
+	$(call banner,Running tests with coverage)
+	cd tests && npm run test:coverage
+
+test-ci:
+	$(call banner,Running tests in CI mode)
+	cd tests && npm run test:ci
+
+test-setup: dev-build dev-up
+	$(call banner,Waiting for WordPress to be ready...)
+	@timeout 180 bash -c 'until curl -k -f -s https://api.mycompany.local:8443/wp-json/ > /dev/null 2>&1; do sleep 5; echo "Waiting for WordPress..."; done' || (echo "WordPress failed to start" && exit 1)
+	@echo "WordPress is ready!"
+
+test-full: test-setup test-install test
+	$(call banner,Full test suite completed)
+
+test-clean:
+	$(call banner,Cleaning test artifacts)
+	cd tests && rm -rf node_modules coverage dist
+

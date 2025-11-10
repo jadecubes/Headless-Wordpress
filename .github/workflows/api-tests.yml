@@ -1,0 +1,98 @@
+name: API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    name: Run API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Add hosts to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 api.mycompany.local" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 admin.mycompany.local" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 mycompany.local" | sudo tee -a /etc/hosts
+
+      - name: Build Docker images
+        run: make dev-build
+        env:
+          DOCKER_BUILDKIT: 1
+
+      - name: Start Docker services
+        run: make dev-up
+
+      - name: Wait for WordPress to be ready
+        run: |
+          echo "Waiting for WordPress to be ready..."
+          timeout 180 bash -c 'until curl -k -f -s https://api.mycompany.local:8443/wp-json/ > /dev/null; do sleep 5; echo "Waiting..."; done'
+          echo "WordPress is ready!"
+
+      - name: Check WordPress health
+        run: |
+          echo "Checking WordPress API health..."
+          curl -k -f -s https://api.mycompany.local:8443/wp-json/ | jq .
+          echo "WordPress health check passed!"
+
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm ci
+
+      - name: Run API tests
+        working-directory: tests
+        run: npm run test:ci
+        env:
+          API_BASE_URL: https://api.mycompany.local:8443/wp-json
+          ADMIN_BASE_URL: https://admin.mycompany.local:8443
+          FRONTEND_ORIGIN: https://localhost:3000
+          WP_TEST_USERNAME: admin
+          WP_TEST_PASSWORD: admin
+          WP_TEST_EMAIL: admin@example.com
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./tests/coverage/lcov.info
+          flags: api-tests
+          name: api-coverage
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: tests/coverage/
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: |
+          echo "=== WordPress logs ==="
+          docker compose -f compose.core.yaml logs wordpress
+          echo "=== Database logs ==="
+          docker compose -f compose.core.yaml logs db
+          echo "=== Reverse Proxy logs ==="
+          docker compose -f compose.reverse-proxy.yaml logs reverse-proxy
+
+      - name: Cleanup Docker services
+        if: always()
+        run: make dev-down
