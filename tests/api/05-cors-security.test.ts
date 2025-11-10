@@ -22,7 +22,7 @@ describe('CORS & Security Tests', () => {
       // Check if CORS headers are present
       const corsHeader = response.headers['access-control-allow-origin'];
       if (corsHeader) {
-        expect([frontendOrigin, '*']).toContain(corsHeader);
+        expect(corsHeader).toMatch(new RegExp(`^(${frontendOrigin}|\\*)$`));
       }
     });
 
