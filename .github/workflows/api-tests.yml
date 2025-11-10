@@ -96,7 +96,7 @@ jobs:
           docker compose logs setup
 
           echo "Checking active plugins..."
-          docker compose exec -T wordpress wp plugin list
+          docker compose run --rm wpcli plugin list
 
       - name: Install test dependencies
         working-directory: tests
