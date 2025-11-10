@@ -46,8 +46,12 @@ echo "[bootstrap] Ensuring permalinks and JWT plugin..."
 wp rewrite structure "/%postname%/" --hard
 wp rewrite flush --hard
 
+# Ensure upgrade directory exists with correct permissions
+mkdir -p /var/www/html/wp-content/upgrade
+chown www-data:www-data /var/www/html/wp-content/upgrade
+
 # JWT plugin (no-op if already installed; --force keeps it idempotent)
-wp plugin install jwt-authentication-for-wp-rest-api --activate --force
+wp plugin install jwt-authentication-for-wp-rest-api --activate --force --allow-root
 
 # Optional: diagnostics in logs
 echo "[bootstrap] JWT plugin status:"
