@@ -260,7 +260,8 @@ describe('Taxonomy API (Categories, Tags, Users)', () => {
       expect(response.status).toBe(200);
       expect(response.data).toHaveProperty('id');
       expect(response.data).toHaveProperty('name');
-      expect(response.data).toHaveProperty('email');
+      expect(response.data).toHaveProperty('slug');
+      // Note: email is not returned by /wp/v2/users/me endpoint for security reasons
     });
 
     it('should fail without authentication', async () => {

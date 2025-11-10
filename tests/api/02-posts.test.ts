@@ -219,8 +219,9 @@ describe('Posts API', () => {
       const deleteResponse = await client.delete(`/wp/v2/posts/${postId}`);
 
       expect(deleteResponse.status).toBe(200);
-      expect(deleteResponse.data).toHaveProperty('deleted', false);
-      expect(deleteResponse.data.previous.status).toBe('draft');
+      // WordPress returns the full post object when trashing (not a deleted response)
+      expect(deleteResponse.data).toHaveProperty('status', 'trash');
+      expect(deleteResponse.data).toHaveProperty('id', postId);
 
       // Permanently delete
       await client.delete(`/wp/v2/posts/${postId}`, {
