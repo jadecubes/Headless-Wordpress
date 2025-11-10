@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      # Docker Compose file configuration
+      COMPOSE_FILE: compose.core.yaml:compose.monitoring.yaml:compose.reverse-proxy.yaml
+
       # Database configuration
       DB_NAME: wordpress
       DB_USER: wp
@@ -112,11 +115,11 @@ jobs:
         if: failure()
         run: |
           echo "=== WordPress logs ==="
-          docker compose -f compose.core.yaml logs wordpress
+          docker compose logs wordpress
           echo "=== Database logs ==="
-          docker compose -f compose.core.yaml logs db
+          docker compose logs db
           echo "=== Reverse Proxy logs ==="
-          docker compose -f compose.reverse-proxy.yaml logs reverse-proxy
+          docker compose logs reverse-proxy
 
       - name: Cleanup Docker services
         if: always()
