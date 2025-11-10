@@ -68,6 +68,15 @@ jobs:
       - name: Start Docker services
         run: make dev-up
 
+      - name: Wait for setup container to complete
+        run: |
+          echo "Waiting for setup container to complete..."
+          timeout 120 bash -c 'while docker compose ps setup 2>/dev/null | grep -q "running\|Up"; do sleep 2; echo "Setup still running..."; done' || true
+          echo "Checking setup container exit code..."
+          docker compose ps setup
+          echo "Setup container logs:"
+          docker compose logs setup
+
       - name: Wait for WordPress to be ready
         run: |
           echo "Waiting for WordPress to be ready..."
@@ -79,6 +88,15 @@ jobs:
           echo "Checking WordPress API health..."
           curl -k -f -s https://api.mycompany.local:8443/wp-json/ | jq .
           echo "WordPress health check passed!"
+
+          echo "Checking JWT Auth endpoint..."
+          curl -k -s https://api.mycompany.local:8443/wp-json/jwt-auth/v1 | jq .
+
+          echo "Checking setup container logs..."
+          docker compose logs setup
+
+          echo "Checking active plugins..."
+          docker compose exec -T wordpress wp plugin list
 
       - name: Install test dependencies
         working-directory: tests
