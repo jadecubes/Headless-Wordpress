@@ -52,6 +52,9 @@ export class ApiClient {
     });
 
     this.token = response.data.token;
+    if (!this.token) {
+      throw new Error('Authentication failed: No token received');
+    }
     return this.token;
   }
 
