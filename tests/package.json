@@ -6,7 +6,7 @@
     "test": "jest --runInBand --verbose",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --runInBand",
-    "test:ci": "jest --runInBand --ci --coverage --maxWorkers=2"
+    "test:ci": "jest --runInBand --ci --coverage"
   },
   "keywords": [
     "wordpress",
