@@ -7,6 +7,8 @@
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/Headless-Wordpress/api-tests.yml?branch=main&label=build&logo=github)](https://github.com/yourusername/Headless-Wordpress/actions/workflows/api-tests.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/yourusername/Headless-Wordpress/api-tests.yml?branch=main&label=tests&logo=jest)](https://github.com/yourusername/Headless-Wordpress/actions/workflows/api-tests.yml)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![WordPress](https://img.shields.io/badge/WordPress-6.x-21759B?logo=wordpress&logoColor=white)](https://wordpress.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
@@ -86,6 +88,7 @@ Once started, you can access:
 The project uses a containerized microservices architecture. The following sequence diagram illustrates how different components interact in typical user scenarios:
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'noteBkgColor':'#fff', 'noteTextColor':'#000', 'noteBorderColor':'#666'}}}%%
 sequenceDiagram
     autonumber
     participant Browser
@@ -101,7 +104,7 @@ sequenceDiagram
     Note over Browser,Adminer: Docker Network (Bridge)
 
     rect rgb(230, 245, 255)
-        Note over Browser,WordPress: Scenario 1: Admin Access WordPress Dashboard
+        Note over Browser,WordPress: <span style='color:#000;font-weight:bold'>Scenario 1: Admin Access WordPress Dashboard</span>
         Browser->>Nginx: HTTPS GET https://admin.mycompany.local:8443/wp-admin
         Nginx->>Nginx: SSL termination (port 8443→443)
         Nginx->>WordPress: HTTP GET /wp-admin (port 80)
@@ -114,7 +117,7 @@ sequenceDiagram
     end
 
     rect rgb(240, 255, 240)
-        Note over Browser,WordPress: Scenario 2: Frontend Fetches Content via API
+        Note over Browser,WordPress: <span style='color:#000;font-weight:bold'>Scenario 2: Frontend Fetches Content via API</span>
         Browser->>FrontendSPA: Visit https://mycompany.local:8443
         FrontendSPA->>Nginx: HTTPS GET https://api.mycompany.local:8443/wp-json/wp/v2/posts<br/>Origin: https://localhost:3000
         Nginx->>Nginx: SSL termination
@@ -131,7 +134,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 245, 230)
-        Note over Browser,WordPress: Scenario 3: Authenticated API Request (Create Post)
+        Note over Browser,WordPress: <span style='color:#000;font-weight:bold'>Scenario 3: Authenticated API Request (Create Post)</span>
         FrontendSPA->>Nginx: POST https://api.mycompany.local:8443/wp-json/jwt-auth/v1/token<br/>{username, password}
         Nginx->>WordPress: POST /jwt-auth/v1/token
         WordPress->>DB: Verify user credentials
@@ -151,7 +154,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 245)
-        Note over Browser,DB: Scenario 4: Database Management via Adminer
+        Note over Browser,DB: <span style='color:#000;font-weight:bold'>Scenario 4: Database Management via Adminer</span>
         Browser->>Adminer: HTTP GET http://localhost:9091
         Adminer->>DB: Connect to MariaDB (port 3306)
         DB-->>Adminer: Connection established
@@ -163,7 +166,7 @@ sequenceDiagram
     end
 
     rect rgb(248, 248, 255)
-        Note over Browser,Grafana: Scenario 5: Monitoring & Observability
+        Note over Browser,Grafana: <span style='color:#000;font-weight:bold'>Scenario 5: Monitoring & Observability</span>
         Browser->>Grafana: HTTP GET http://localhost:3001
         Grafana->>Loki: Query logs (port 3100)
         Loki-->>Grafana: Aggregated logs
@@ -171,7 +174,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 250, 240)
-        Note over Browser,WordPress: Scenario 6: Direct WordPress Access (Development)
+        Note over Browser,WordPress: <span style='color:#000;font-weight:bold'>Scenario 6: Direct WordPress Access (Development)</span>
         Browser->>WordPress: HTTP GET http://localhost:8080
         Note right of WordPress: Bypasses reverse proxy<br/>for debugging
         WordPress->>DB: Query data
@@ -253,6 +256,7 @@ The project includes a comprehensive API test suite covering all WordPress REST 
 The following sequence diagram illustrates how the test infrastructure works:
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'noteBkgColor':'#fff', 'noteTextColor':'#000', 'noteBorderColor':'#666'}}}%%
 sequenceDiagram
     autonumber
     participant GHA as GitHub Actions
@@ -310,7 +314,7 @@ sequenceDiagram
     Tests->>Tests: Load environment (.env.test)
 
     rect rgb(200, 220, 250)
-        Note over Tests,API: Test Phase 1: Authentication
+        Note over Tests,API: <span style='color:#000;font-weight:bold'>Test Phase 1: Authentication</span>
         Tests->>API: POST /jwt-auth/v1/token<br/>{username, password}
         API->>DB: Verify credentials
         DB-->>API: User found
@@ -319,7 +323,7 @@ sequenceDiagram
     end
 
     rect rgb(220, 250, 220)
-        Note over Tests,API: Test Phase 2: CRUD Operations
+        Note over Tests,API: <span style='color:#000;font-weight:bold'>Test Phase 2: CRUD Operations</span>
         Tests->>API: GET /wp/v2/posts
         API->>DB: SELECT * FROM wp_posts
         DB-->>API: Posts data
@@ -338,7 +342,7 @@ sequenceDiagram
     end
 
     rect rgb(250, 220, 220)
-        Note over Tests,API: Test Phase 3: Security & CORS
+        Note over Tests,API: <span style='color:#000;font-weight:bold'>Test Phase 3: Security & CORS</span>
         Tests->>API: GET /wp/v2/posts<br/>Origin: https://localhost:3000
         API->>API: Check CORS headers
         API-->>Tests: 200 OK<br/>Access-Control-Allow-Origin: *
