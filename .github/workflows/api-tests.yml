@@ -66,7 +66,10 @@ jobs:
           DOCKER_BUILDKIT: 1
 
       - name: Start Docker services
-        run: make dev-up
+        run: |
+          # Ensure we're starting fresh
+          make dev-down || true
+          make dev-up
 
       - name: Wait for setup container to complete
         run: |
@@ -74,6 +77,13 @@ jobs:
           timeout 120 bash -c 'while docker compose ps setup 2>/dev/null | grep -q "running\|Up"; do sleep 2; echo "Setup still running..."; done' || true
           echo "Checking setup container exit code..."
           docker compose ps setup
+
+          # If setup failed, restart it to pick up any script changes
+          if docker compose ps setup | grep -q "Exited"; then
+            echo "Setup container exited with error, restarting..."
+            docker compose up setup --force-recreate
+          fi
+
           echo "Setup container logs:"
           docker compose logs setup
 
@@ -96,7 +106,7 @@ jobs:
           docker compose logs setup
 
           echo "Checking active plugins..."
-          docker compose run --rm wpcli plugin list
+          docker compose run --rm wpcli wp plugin list --allow-root
 
       - name: Install test dependencies
         working-directory: tests
