@@ -7,8 +7,8 @@
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/Headless-Wordpress/api-tests.yml?branch=main&label=build&logo=github)](https://github.com/yourusername/Headless-Wordpress/actions/workflows/api-tests.yml)
-[![Tests](https://img.shields.io/github/actions/workflow/status/yourusername/Headless-Wordpress/api-tests.yml?branch=main&label=tests&logo=jest)](https://github.com/yourusername/Headless-Wordpress/actions/workflows/api-tests.yml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/jadecubes/Headless-Wordpress/api-tests.yml?branch=main&label=build&logo=github)](https://github.com/jadecubes/Headless-Wordpress/actions/workflows/api-tests.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/jadecubes/Headless-Wordpress/api-tests.yml?branch=main&label=tests&logo=jest)](https://github.com/jadecubes/Headless-Wordpress/actions/workflows/api-tests.yml)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![WordPress](https://img.shields.io/badge/WordPress-6.x-21759B?logo=wordpress&logoColor=white)](https://wordpress.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
