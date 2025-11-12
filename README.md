@@ -97,5 +97,525 @@ Once started, you can access:
   ```
 - It's the development environment included in the repository.
 
+---
+
+## Architecture Overview
+
+This project uses a decoupled headless CMS architecture where WordPress serves as the content management backend through its REST API, while a separate React frontend handles the user interface.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Client Browser                            │
+└────────────┬────────────────────────────┬──────────────────────┘
+             │                            │
+             │ HTTPS:8443                 │ HTTPS:8443
+             │                            │
+┌────────────▼────────────┐  ┌────────────▼──────────────────────┐
+│   React Frontend        │  │   WordPress Admin/API              │
+│   (Port 3000)           │  │   (Nginx Reverse Proxy)           │
+│                         │  │                                    │
+│  - Modern UI/UX         │  │  admin.mycompany.local → WP Admin │
+│  - Fast Performance     │  │  api.mycompany.local → REST API   │
+│  - Custom Components    │  │                                    │
+└─────────────────────────┘  └──────────┬─────────────────────────┘
+                                        │
+                             ┌──────────▼──────────────┐
+                             │  WordPress Core         │
+                             │  (Port 80)              │
+                             │                         │
+                             │  - Content Management   │
+                             │  - REST API             │
+                             │  - JWT Authentication   │
+                             │  - Media Management     │
+                             └──────────┬──────────────┘
+                                        │
+                             ┌──────────▼──────────────┐
+                             │  MariaDB Database       │
+                             │  (Port 3306)            │
+                             │                         │
+                             │  - Content Storage      │
+                             │  - User Data            │
+                             │  - Metadata             │
+                             └─────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    Observability Stack                           │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │  Promtail    │─▶│     Loki     │─▶│   Grafana    │         │
+│  │ Log Collector│  │ Log Aggregator│  │  Dashboards  │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+│                                          (Port 3001)            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+- **Nginx Reverse Proxy**: Routes traffic to appropriate backends with SSL termination
+- **WordPress**: Headless CMS providing REST API and admin interface
+- **MariaDB**: Relational database for WordPress data
+- **React Frontend**: Custom UI consuming WordPress REST API
+- **Grafana Stack**: Log aggregation and monitoring (Grafana + Loki + Promtail)
+- **Adminer**: Web-based database management tool
+
+---
+
+## CI/CD Pipeline & Testing
+
+### Automated Testing Flow
+
+Our CI/CD pipeline ensures code quality through automated testing on every push and pull request.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    GitHub Actions Workflow                        │
+└──────────────────────────────────────────────────────────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  Trigger Events        │
+                │  • Push to main        │
+                │  • Pull Request        │
+                │  • Manual Dispatch     │
+                └───────────┬────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  1. Environment Setup  │
+                │  • Checkout Code       │
+                │  • Setup Node.js 20    │
+                │  • Setup Docker        │
+                │  • Add /etc/hosts      │
+                └───────────┬────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  2. Build Services     │
+                │  • make dev-build      │
+                │  • Docker Compose      │
+                │  • 3 Compose Files     │
+                └───────────┬────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  3. Start Services     │
+                │  • make dev-up         │
+                │  • WordPress           │
+                │  • MariaDB             │
+                │  • Nginx Proxy         │
+                │  • Setup Container     │
+                └───────────┬────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  4. Health Checks      │
+                │  • Wait for WP Ready   │
+                │  • API Availability    │
+                │  • JWT Auth Check      │
+                │  • Plugin Activation   │
+                └───────────┬────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  5. Run Test Suite     │
+                │  • npm ci              │
+                │  • npm run test:ci     │
+                │  • 5 Test Files        │
+                │  • Jest + TypeScript   │
+                └───────────┬────────────┘
+                            │
+            ┌───────────────┴───────────────┐
+            │                               │
+    ┌───────▼────────┐            ┌────────▼────────┐
+    │   ✅ Success    │            │   ❌ Failure     │
+    │                │            │                 │
+    │ • Upload       │            │ • Show Docker   │
+    │   Coverage     │            │   Logs          │
+    │ • Upload       │            │ • WP Logs       │
+    │   Artifacts    │            │ • DB Logs       │
+    │ • Badge: Pass  │            │ • Nginx Logs    │
+    └────────────────┘            └─────────────────┘
+            │                               │
+            └───────────────┬───────────────┘
+                            │
+                ┌───────────▼────────────┐
+                │  6. Cleanup            │
+                │  • make dev-down       │
+                │  • Remove Containers   │
+                │  • Free Resources      │
+                └────────────────────────┘
+```
+
+### Test Coverage
+
+The automated test suite covers:
+
+1. **JWT Authentication** (`01-jwt-auth.test.ts`)
+   - Login flows, token validation, security checks
+
+2. **Posts API** (`02-posts.test.ts`)
+   - CRUD operations, pagination, search, filtering
+
+3. **Pages & Media** (`03-pages-media.test.ts`)
+   - Page management, media uploads, metadata
+
+4. **Taxonomy** (`04-taxonomy.test.ts`)
+   - Categories, tags, users, custom taxonomies
+
+5. **CORS & Security** (`05-cors-security.test.ts`)
+   - CORS headers, authentication, authorization, error handling
+
+For detailed test documentation, see [tests/README.md](tests/README.md)
+
+---
+
+## Development Workflow
+
+### Local Development
+
+```bash
+# 1. Start development environment
+make dev-up
+
+# 2. Access the services
+# - WordPress Admin: https://admin.mycompany.local:8443
+# - REST API: https://api.mycompany.local:8443/wp-json
+# - Frontend: https://mycompany.local:8443
+
+# 3. Make your changes to WordPress or frontend code
+
+# 4. Run tests locally
+cd tests
+npm install
+npm test
+
+# 5. Stop services when done
+make dev-down
+```
+
+### Making Changes
+
+#### Backend (WordPress) Changes
+
+1. Modify WordPress configuration in `compose.core.yaml`
+2. Add plugins/themes to the WordPress container
+3. Update environment variables as needed
+4. Rebuild: `make dev-build`
+
+#### Frontend Changes
+
+1. Edit React components (not included in this repo)
+2. Frontend runs on `localhost:3000`
+3. Nginx proxies to React dev server
+
+#### Infrastructure Changes
+
+1. Modify Docker Compose files:
+   - `compose.core.yaml` - Core services
+   - `compose.reverse-proxy.yaml` - Nginx configuration
+   - `compose.monitoring.yaml` - Observability stack
+2. Update Nginx configuration in `reverse-proxy/`
+3. Rebuild and restart: `make dev-build && make dev-up`
+
+### Available Make Commands
+
+```bash
+make dev-build    # Build Docker images
+make dev-up       # Start all services
+make dev-down     # Stop all services
+make dev-logs     # View service logs
+make dev-restart  # Restart services
+```
+
+---
+
+## Monitoring & Observability
+
+### Grafana Dashboard
+
+Access Grafana at `http://localhost:3001` to view:
+- Application logs from all services
+- WordPress access and error logs
+- Nginx proxy logs
+- Database query logs
+
+**Default credentials**: admin/admin (change on first login)
+
+### Log Aggregation
+
+The stack uses:
+- **Promtail**: Collects logs from Docker containers
+- **Loki**: Stores and indexes logs
+- **Grafana**: Visualizes logs and creates dashboards
+
+### Monitoring WordPress
+
+```bash
+# View WordPress logs
+docker compose logs -f wordpress
+
+# View database logs
+docker compose logs -f db
+
+# View all logs
+make dev-logs
+
+# Check container health
+docker compose ps
+```
+
+---
+
+## Deployment
+
+### Production Considerations
+
+Before deploying to production:
+
+1. **Security**
+   - Change all default passwords
+   - Generate new JWT secret keys
+   - Use proper SSL certificates (not self-signed)
+   - Enable WordPress security plugins
+   - Configure proper CORS origins
+
+2. **Database**
+   - Use managed database service (RDS, Cloud SQL)
+   - Set up regular backups
+   - Enable SSL connections
+   - Tune performance parameters
+
+3. **WordPress**
+   - Enable caching (Redis, Memcached)
+   - Configure CDN for media files
+   - Set up automated backups
+   - Enable security headers
+
+4. **Nginx**
+   - Configure rate limiting
+   - Enable HTTP/2
+   - Set up proper caching headers
+   - Add DDoS protection
+
+5. **Monitoring**
+   - Set up alerts for errors
+   - Monitor API response times
+   - Track database performance
+   - Configure log retention policies
+
+### Environment Variables
+
+Key environment variables to configure:
+
+```bash
+# Database
+DB_NAME=wordpress
+DB_USER=wp_user
+DB_PASSWORD=secure_password
+
+# WordPress
+WP_ADMIN_USER=admin
+WP_ADMIN_PASS=secure_password
+WP_ADMIN_EMAIL=admin@example.com
+
+# JWT
+JWT_SECRET_KEY=generate_secure_key_here
+
+# Domains
+ADMIN_HOST=admin.yoursite.com
+API_HOST=api.yoursite.com
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### SSL Certificate Errors
+
+**Problem**: Browser shows SSL warnings or certificate errors
+
+**Solution**:
+```bash
+# Ensure certificates are valid
+ls -la reverse-proxy/certs/certs/
+ls -la reverse-proxy/certs/private/
+
+# Regenerate certificates if needed
+mkcert -cert-file reverse-proxy/certs/certs/api.crt \
+       -key-file reverse-proxy/certs/private/api.key \
+       "api.mycompany.local" "admin.mycompany.local" "localhost"
+```
+
+#### Services Not Starting
+
+**Problem**: Docker services fail to start
+
+**Solution**:
+```bash
+# Check for port conflicts
+lsof -i :8080  # WordPress
+lsof -i :8443  # Nginx
+lsof -i :3306  # MariaDB
+
+# Stop all services and restart
+make dev-down
+docker system prune -f
+make dev-build
+make dev-up
+```
+
+#### Database Connection Errors
+
+**Problem**: WordPress can't connect to database
+
+**Solution**:
+```bash
+# Check database is running
+docker compose ps db
+
+# View database logs
+docker compose logs db
+
+# Verify credentials match in compose.core.yaml
+# Check DB_HOST, DB_NAME, DB_USER, DB_PASSWORD
+```
+
+#### WordPress Setup Not Completing
+
+**Problem**: WordPress installation hangs or fails
+
+**Solution**:
+```bash
+# Check setup container logs
+docker compose logs setup
+
+# Restart setup container
+docker compose up setup --force-recreate
+
+# Verify plugins installed
+docker compose run --rm wpcli wp plugin list --allow-root
+```
+
+#### Test Failures
+
+**Problem**: Tests fail locally or in CI
+
+**Solution**:
+```bash
+# Ensure all services are healthy
+curl -k https://api.mycompany.local:8443/wp-json/
+
+# Check test environment variables
+cat tests/.env.test
+
+# Run tests with verbose output
+cd tests
+npm test -- --verbose
+
+# Check WordPress logs during test run
+docker compose logs -f wordpress
+```
+
+#### Port Already in Use
+
+**Problem**: Cannot start services due to port conflicts
+
+**Solution**:
+```bash
+# Find process using port
+lsof -i :8080
+
+# Kill the process or change port in compose files
+# Edit compose.core.yaml or compose.reverse-proxy.yaml
+```
+
+### Getting Help
+
+- Check [GitHub Issues](https://github.com/jadecubes/Headless-Wordpress/issues)
+- Review [tests/README.md](tests/README.md) for test-specific issues
+- Check Docker logs: `make dev-logs`
+- Verify `/etc/hosts` configuration
+
+---
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+### Setting Up for Development
+
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/yourusername/Headless-Wordpress.git`
+3. Create a branch: `git checkout -b feature/your-feature-name`
+4. Set up the environment: `make dev-build && make dev-up`
+
+### Making Changes
+
+1. Make your changes to the codebase
+2. Add tests for new features (see `tests/README.md`)
+3. Run tests locally: `cd tests && npm test`
+4. Ensure all tests pass before submitting
+
+### Code Style
+
+- Use clear, descriptive commit messages
+- Follow existing code structure and patterns
+- Add comments for complex logic
+- Update documentation for new features
+
+### Submitting Pull Requests
+
+1. Ensure all tests pass locally
+2. Update README.md if adding features
+3. Add test coverage for new functionality
+4. Push to your fork: `git push origin feature/your-feature-name`
+5. Open a Pull Request with:
+   - Clear description of changes
+   - Link to related issues
+   - Screenshots (if UI changes)
+   - Test results
+
+### Running Tests
+
+Before submitting:
+
+```bash
+# Run full test suite
+cd tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Ensure coverage meets requirements
+```
+
+### Reporting Bugs
+
+When reporting bugs, include:
+- Steps to reproduce
+- Expected behavior
+- Actual behavior
+- Environment details (OS, Docker version)
+- Relevant logs (`make dev-logs`)
+
+### Feature Requests
+
+For feature requests:
+- Describe the use case
+- Explain the expected benefit
+- Provide examples if possible
+
+---
+
+## License
+
+MIT License - see LICENSE file for details
+
+---
+
+## Acknowledgments
+
+- WordPress Core Team
+- React Community
+- Docker & Docker Compose
+- Grafana Labs (Loki & Grafana)
+- All contributors
 
 
