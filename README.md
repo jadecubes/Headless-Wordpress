@@ -103,60 +103,150 @@ Once started, you can access:
 
 This project uses a decoupled headless CMS architecture where WordPress serves as the content management backend through its REST API, while a separate React frontend handles the user interface.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Client Browser                            │
-└────────────┬────────────────────────────┬──────────────────────┘
-             │                            │
-             │ HTTPS:8443                 │ HTTPS:8443
-             │                            │
-┌────────────▼────────────┐  ┌────────────▼──────────────────────┐
-│   React Frontend        │  │   WordPress Admin/API              │
-│   (Port 3000)           │  │   (Nginx Reverse Proxy)           │
-│                         │  │                                    │
-│  - Modern UI/UX         │  │  admin.mycompany.local → WP Admin │
-│  - Fast Performance     │  │  api.mycompany.local → REST API   │
-│  - Custom Components    │  │                                    │
-└─────────────────────────┘  └──────────┬─────────────────────────┘
-                                        │
-                             ┌──────────▼──────────────┐
-                             │  WordPress Core         │
-                             │  (Port 80)              │
-                             │                         │
-                             │  - Content Management   │
-                             │  - REST API             │
-                             │  - JWT Authentication   │
-                             │  - Media Management     │
-                             └──────────┬──────────────┘
-                                        │
-                             ┌──────────▼──────────────┐
-                             │  MariaDB Database       │
-                             │  (Port 3306)            │
-                             │                         │
-                             │  - Content Storage      │
-                             │  - User Data            │
-                             │  - Metadata             │
-                             └─────────────────────────┘
+#### UML Component Diagram: System Architecture
 
-┌─────────────────────────────────────────────────────────────────┐
-│                    Observability Stack                           │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │  Promtail    │─▶│     Loki     │─▶│   Grafana    │         │
-│  │ Log Collector│  │ Log Aggregator│  │  Dashboards  │         │
-│  └──────────────┘  └──────────────┘  └──────────────┘         │
-│                                          (Port 3001)            │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Browser[Web Browser]
+    end
+
+    subgraph "Reverse Proxy Layer - Port 8443"
+        Nginx[Nginx Reverse Proxy<br/>SSL Termination]
+    end
+
+    subgraph "Application Layer"
+        Frontend[React Frontend<br/>Port 3000<br/>Modern UI]
+        WordPress[WordPress Core<br/>Port 80<br/>Headless CMS]
+        Setup[Setup Container<br/>WP Install & Config]
+        WPCli[WP-CLI<br/>Management Tools]
+    end
+
+    subgraph "Data Layer"
+        MariaDB[(MariaDB<br/>Port 3306<br/>Content DB)]
+    end
+
+    subgraph "Observability Stack"
+        Promtail[Promtail<br/>Log Collector]
+        Loki[Loki<br/>Log Storage]
+        Grafana[Grafana<br/>Port 3001<br/>Dashboards]
+    end
+
+    subgraph "Management Tools"
+        Adminer[Adminer<br/>Port 9091<br/>DB Admin]
+    end
+
+    Browser -->|HTTPS:8443<br/>mycompany.local| Nginx
+    Browser -->|HTTPS:8443<br/>admin.mycompany.local| Nginx
+    Browser -->|HTTPS:8443<br/>api.mycompany.local| Nginx
+    Browser -->|HTTP:3001| Grafana
+    Browser -->|HTTP:9091| Adminer
+
+    Nginx -->|Proxy Pass<br/>mycompany.local| Frontend
+    Nginx -->|Proxy Pass<br/>admin.mycompany.local| WordPress
+    Nginx -->|Proxy Pass<br/>api.mycompany.local/wp-json| WordPress
+
+    Frontend -.->|REST API Calls| Nginx
+    WordPress -->|SQL Queries| MariaDB
+    Setup -->|Configure & Install| WordPress
+    WPCli -->|CLI Commands| WordPress
+
+    WordPress -->|Write Logs| Promtail
+    Nginx -->|Write Logs| Promtail
+    MariaDB -->|Write Logs| Promtail
+    Promtail -->|Stream Logs| Loki
+    Loki -->|Query Logs| Grafana
+
+    Adminer -->|SQL Connection| MariaDB
+
+    style Browser fill:#e1f5ff
+    style Nginx fill:#90EE90
+    style Frontend fill:#FFD700
+    style WordPress fill:#0073aa
+    style MariaDB fill:#003545
+    style Grafana fill:#F46800
+    style Loki fill:#F46800
+    style Promtail fill:#F46800
+```
+
+#### Request Flow Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser
+    participant Nginx as Nginx Proxy<br/>(Port 8443)
+    participant React as React App<br/>(Port 3000)
+    participant WP as WordPress<br/>(Port 80)
+    participant DB as MariaDB<br/>(Port 3306)
+
+    Note over User,DB: Frontend Content Request
+    User->>Browser: Visit mycompany.local:8443
+    Browser->>Nginx: HTTPS Request
+    Nginx->>React: Proxy to localhost:3000
+    React-->>Browser: HTML/JS/CSS
+
+    Note over Browser,DB: API Data Fetch
+    React->>Nginx: GET /wp-json/wp/v2/posts
+    Nginx->>WP: Forward to api.mycompany.local
+    WP->>DB: SELECT * FROM wp_posts
+    DB-->>WP: Post records
+    WP-->>Nginx: JSON Response
+    Nginx-->>React: JSON Data
+    React-->>Browser: Rendered Content
+
+    Note over User,DB: Admin Login
+    User->>Browser: Visit admin.mycompany.local:8443
+    Browser->>Nginx: HTTPS Request
+    Nginx->>WP: Proxy to WordPress admin
+    WP-->>Browser: WP Admin Interface
+
+    Note over Browser,DB: Authenticated API Call
+    Browser->>Nginx: POST /jwt-auth/v1/token
+    Nginx->>WP: Forward auth request
+    WP->>DB: Verify credentials
+    DB-->>WP: User valid
+    WP-->>Nginx: JWT Token
+    Nginx-->>Browser: Token response
+
+    Browser->>Nginx: POST /wp-json/wp/v2/posts<br/>(with JWT header)
+    Nginx->>WP: Authenticated request
+    WP->>WP: Validate JWT
+    WP->>DB: INSERT new post
+    DB-->>WP: Post created
+    WP-->>Nginx: 201 Created
+    Nginx-->>Browser: Success response
 ```
 
 ### Key Components
 
 - **Nginx Reverse Proxy**: Routes traffic to appropriate backends with SSL termination
+  - `mycompany.local` → React Frontend
+  - `admin.mycompany.local` → WordPress Admin
+  - `api.mycompany.local` → WordPress REST API
+
 - **WordPress**: Headless CMS providing REST API and admin interface
+  - JWT Authentication for secure API access
+  - REST API endpoints for content
+  - Media management and uploads
+
 - **MariaDB**: Relational database for WordPress data
+  - Content storage (posts, pages, media)
+  - User authentication data
+  - WordPress configuration and metadata
+
 - **React Frontend**: Custom UI consuming WordPress REST API
-- **Grafana Stack**: Log aggregation and monitoring (Grafana + Loki + Promtail)
+  - Modern, fast user experience
+  - Decoupled from WordPress presentation layer
+
+- **Grafana Stack**: Log aggregation and monitoring
+  - **Promtail**: Collects logs from all Docker containers
+  - **Loki**: Aggregates and indexes logs
+  - **Grafana**: Visualizes logs and creates dashboards
+
 - **Adminer**: Web-based database management tool
+  - Direct database access for development
+  - SQL query interface
 
 ---
 
@@ -166,79 +256,128 @@ This project uses a decoupled headless CMS architecture where WordPress serves a
 
 Our CI/CD pipeline ensures code quality through automated testing on every push and pull request.
 
+#### UML Sequence Diagram: CI/CD Testing Process
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GitHub
+    participant GH Actions as GitHub Actions
+    participant Docker
+    participant WordPress
+    participant MariaDB
+    participant Nginx
+    participant Jest as Jest Test Runner
+    participant Codecov
+
+    Developer->>GitHub: Push/PR to main branch
+    GitHub->>GH Actions: Trigger workflow
+
+    Note over GH Actions: 1. Environment Setup
+    GH Actions->>GH Actions: Checkout code
+    GH Actions->>GH Actions: Setup Node.js 20
+    GH Actions->>GH Actions: Setup Docker Buildx
+    GH Actions->>GH Actions: Add hosts to /etc/hosts
+
+    Note over GH Actions,Docker: 2. Build Services
+    GH Actions->>Docker: make dev-build
+    Docker->>Docker: Build WordPress image
+    Docker->>Docker: Build reverse-proxy image
+    Docker->>Docker: Build monitoring images
+    Docker-->>GH Actions: Build complete
+
+    Note over GH Actions,Nginx: 3. Start Services
+    GH Actions->>Docker: make dev-up
+    Docker->>MariaDB: Start database
+    MariaDB-->>Docker: Ready
+    Docker->>WordPress: Start WordPress
+    WordPress->>MariaDB: Connect to DB
+    MariaDB-->>WordPress: Connection established
+    Docker->>Nginx: Start reverse proxy
+    Nginx->>WordPress: Connect upstream
+    WordPress-->>Nginx: Connection ready
+    Docker->>WordPress: Run setup container
+    WordPress->>WordPress: Install WordPress
+    WordPress->>WordPress: Activate JWT Auth plugin
+    Docker-->>GH Actions: All services running
+
+    Note over GH Actions,WordPress: 4. Health Checks
+    GH Actions->>Nginx: curl https://api.mycompany.local:8443/wp-json/
+    Nginx->>WordPress: Forward request
+    WordPress-->>Nginx: API discovery response
+    Nginx-->>GH Actions: 200 OK
+
+    GH Actions->>Nginx: Check JWT Auth endpoint
+    Nginx->>WordPress: Forward JWT request
+    WordPress-->>Nginx: JWT Auth available
+    Nginx-->>GH Actions: JWT ready
+
+    GH Actions->>Docker: Check setup container logs
+    Docker-->>GH Actions: Setup successful
+
+    GH Actions->>WordPress: wp plugin list
+    WordPress-->>GH Actions: Plugins active
+
+    Note over GH Actions,Jest: 5. Run Test Suite
+    GH Actions->>Jest: npm ci (install dependencies)
+    Jest-->>GH Actions: Dependencies installed
+
+    GH Actions->>Jest: npm run test:ci
+
+    Jest->>Nginx: Test 1: JWT Authentication
+    Nginx->>WordPress: POST /jwt-auth/v1/token
+    WordPress-->>Nginx: JWT token
+    Nginx-->>Jest: ✓ Auth successful
+
+    Jest->>Nginx: Test 2: Posts CRUD
+    Nginx->>WordPress: GET /wp/v2/posts
+    WordPress->>MariaDB: Query posts
+    MariaDB-->>WordPress: Post data
+    WordPress-->>Nginx: Posts response
+    Nginx-->>Jest: ✓ Posts retrieved
+
+    Jest->>Nginx: Test 3: Pages & Media
+    Nginx->>WordPress: GET /wp/v2/pages
+    WordPress->>MariaDB: Query pages
+    MariaDB-->>WordPress: Page data
+    WordPress-->>Nginx: Pages response
+    Nginx-->>Jest: ✓ Pages retrieved
+
+    Jest->>Nginx: Test 4: Taxonomy
+    Nginx->>WordPress: GET /wp/v2/categories
+    WordPress->>MariaDB: Query categories
+    MariaDB-->>WordPress: Category data
+    WordPress-->>Nginx: Categories response
+    Nginx-->>Jest: ✓ Taxonomy working
+
+    Jest->>Nginx: Test 5: CORS & Security
+    Nginx->>WordPress: OPTIONS /wp/v2/posts
+    WordPress-->>Nginx: CORS headers
+    Nginx-->>Jest: ✓ Security validated
+
+    Jest-->>GH Actions: All tests passed ✓
+
+    Note over GH Actions,Codecov: 6. Upload Results
+    GH Actions->>Jest: Generate coverage report
+    Jest-->>GH Actions: coverage/lcov.info
+    GH Actions->>Codecov: Upload coverage
+    Codecov-->>GH Actions: Coverage uploaded
+
+    GH Actions->>GitHub: Upload test artifacts
+    GitHub-->>GH Actions: Artifacts stored
+
+    Note over GH Actions,Docker: 7. Cleanup
+    GH Actions->>Docker: make dev-down
+    Docker->>Nginx: Stop reverse proxy
+    Docker->>WordPress: Stop WordPress
+    Docker->>MariaDB: Stop database
+    Docker-->>GH Actions: Cleanup complete
+
+    GH Actions->>GitHub: Update build status ✓
+    GitHub->>Developer: Notification: Build passed
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    GitHub Actions Workflow                        │
-└──────────────────────────────────────────────────────────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  Trigger Events        │
-                │  • Push to main        │
-                │  • Pull Request        │
-                │  • Manual Dispatch     │
-                └───────────┬────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  1. Environment Setup  │
-                │  • Checkout Code       │
-                │  • Setup Node.js 20    │
-                │  • Setup Docker        │
-                │  • Add /etc/hosts      │
-                └───────────┬────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  2. Build Services     │
-                │  • make dev-build      │
-                │  • Docker Compose      │
-                │  • 3 Compose Files     │
-                └───────────┬────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  3. Start Services     │
-                │  • make dev-up         │
-                │  • WordPress           │
-                │  • MariaDB             │
-                │  • Nginx Proxy         │
-                │  • Setup Container     │
-                └───────────┬────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  4. Health Checks      │
-                │  • Wait for WP Ready   │
-                │  • API Availability    │
-                │  • JWT Auth Check      │
-                │  • Plugin Activation   │
-                └───────────┬────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  5. Run Test Suite     │
-                │  • npm ci              │
-                │  • npm run test:ci     │
-                │  • 5 Test Files        │
-                │  • Jest + TypeScript   │
-                └───────────┬────────────┘
-                            │
-            ┌───────────────┴───────────────┐
-            │                               │
-    ┌───────▼────────┐            ┌────────▼────────┐
-    │   ✅ Success    │            │   ❌ Failure     │
-    │                │            │                 │
-    │ • Upload       │            │ • Show Docker   │
-    │   Coverage     │            │   Logs          │
-    │ • Upload       │            │ • WP Logs       │
-    │   Artifacts    │            │ • DB Logs       │
-    │ • Badge: Pass  │            │ • Nginx Logs    │
-    └────────────────┘            └─────────────────┘
-            │                               │
-            └───────────────┬───────────────┘
-                            │
-                ┌───────────▼────────────┐
-                │  6. Cleanup            │
-                │  • make dev-down       │
-                │  • Remove Containers   │
-                │  • Free Resources      │
-                └────────────────────────┘
-```
+
+**Workflow File**: `.github/workflows/api-tests.yml`
 
 ### Test Coverage
 
