@@ -743,12 +743,6 @@ For feature requests:
 
 ---
 
-## License
-
-MIT License - see LICENSE file for details
-
----
-
 ## Acknowledgments
 
 - WordPress Core Team
